@@ -8,6 +8,8 @@ import constants
 import ugame
 import random
 import stage
+import time
+import supervisor
 
 def splash_scene():
     # this function is the main game game scene
@@ -15,7 +17,7 @@ def splash_scene():
     # get sound ready
     coin_sound = open("coin.wav", 'rb')
     sound = ugame.audio
-    sound.mute(False)
+    sound.mute(True)
     sound.play(coin_sound)
 
     # image banks for CircuitPython
@@ -97,16 +99,23 @@ def menu_scene():
 def  game_scene():
     # this function is the main game game scene
 
-    # score
+    # vars
     score = 0
     egg_count = 0
     bomb_count = 0
+    lives = 3
 
     score_text = stage.Text(width=29, height=12)
     score_text.clear()
     score_text.cursor(0, 0)
     score_text.move(1, 1)
     score_text.text("Score: {0}".format(score))
+
+    lives_text = stage.Text(width=29, height=12)
+    lives_text.clear()
+    lives_text.cursor(14, 0)
+    lives_text.move(1, 1)
+    lives_text.text("Lives: {0}".format(lives))
 
     def show_egg(): 
         # this function take an alien from off screen and moves it on screen
@@ -149,7 +158,7 @@ def  game_scene():
     boom_sound = open("boom.wav", "rb")
     sound = ugame.audio
     sound.stop()
-    sound.mute(False)
+    sound.mute(True)
 
     eggs = []
     for egg_number in range(constants.TOTAL_NUMBER_OF_EGGS):
@@ -204,7 +213,7 @@ def  game_scene():
     game = stage.Stage(ugame.display, 60)
 
     # set the layers of all sprites, items show up in order
-    game.layers = [score_text] + bombs + eggs + [chicken] + plants + [background]
+    game.layers = [lives_text] + [score_text] + bombs + eggs + [chicken] + plants + [background]
 
     # render all sprites
     # most likely you will only render the background once per game scene
@@ -321,11 +330,71 @@ def  game_scene():
                     score_text.cursor(0, 0)
                     score_text.move(1, 1)
                     score_text.text("Score: {0}".format(score))
+                    lives -= 1
+                    lives_text.clear()
+                    lives_text.cursor(14, 0)
+                    lives_text.move(1, 1)
+                    lives_text.text("Lives: {0}".format(lives))
+                    if lives == 0:
+                        game_over_scene(score)
 
         # redraw Sprite
         game.render_sprites(bombs + eggs + [chicken])
         game.tick()  # wait until refresh rate finishes
 
 
+def game_over_scene(score):
+    # this function is the game over scene
+
+    # turn off sound from last scene
+    sound = ugame.audio
+    sound.stop()
+
+    # image banks for CircuitPython
+    image_bank_2 = stage.Bank.from_bmp16("mt_game_studio.bmp")
+
+    # sets the background to image 0 in the image
+    background = stage.Grid(
+        image_bank_2,
+        constants.SCREEN_GRID_X,
+        constants.SCREEN_GRID_Y,
+    )
+
+    # add text objects
+    text = []
+    text1 = stage.Text(
+        width=29, height=14, font=None, palette=constants.BLUE_PALETTE, buffer=None
+    )
+    text1.move(22, 20)
+    text1.text("Final Score: {:0>2d}".format(score))
+    text.append(text1)
+
+    text2 = stage.Text(
+        width=29, height=14, font=None, palette=constants.BLUE_PALETTE, buffer=None
+    )
+    text2.move(43, 60)
+    text2.text("GAME OVER")
+    text.append(text2)
+
+    text3 = stage.Text(
+        width=29, height=14, font=None, palette=constants.BLUE_PALETTE, buffer=None
+    )
+    text3.move(32, 110)
+    text3.text("PRESS SELECT")
+    text.append(text3)
+
+    game = stage.Stage(ugame.display, constants.FPS)
+    game.layers = text + [background]
+    game.render_block()
+
+    while True:
+        keys = ugame.buttons.get_pressed()
+    
+        # Start button select
+        if keys & ugame.K_SELECT != 0:
+            supervisor.reload()
+        game.tick()
+
+    
 if __name__ == "__main__":
-    menu_scene()
+    splash_scene()
