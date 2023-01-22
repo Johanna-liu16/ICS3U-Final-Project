@@ -6,7 +6,40 @@
 
 import constants
 import ugame
+import random
 import stage
+
+def splash_scene():
+    # this function is the main game game scene
+
+    # get sound ready
+    coin_sound = open("coin.wav", 'rb')
+    sound = ugame.audio
+    sound.mute(False)
+    sound.play(coin_sound)
+
+    # image banks for CircuitPython
+    image_bank_mt_background = stage.Bank.from_bmp16("mt_game_studio.bmp")
+
+    # set the background to image 0 in the image bank
+    background = stage.Grid(
+        image_bank_mt_background, constants.SCREEN_X, constants.SCREEN_Y
+    )
+
+    # create a stage for the background to show up on
+    #  and set the frame rate to 60fps
+    game = stage.Stage(ugame.display, constants.FPS)
+    # set the layers of all sprites, items show up in order
+    game.layers = [background]
+    # render the background and initial lcation of sprite list
+    # most likely you will only render the background once per scene
+    game.render_block()
+
+    # repeat forever, game loop
+    while True:
+        # Wait for 1 sec
+        time.sleep(1.0)
+        menu_scene()
 
 def menu_scene():
     # this function is the main game game scene
@@ -27,24 +60,23 @@ def menu_scene():
     text.append(text2)
 
     # set the background to image 0 in the image bank
-    background = stage.Grid(image_bank_background, constants.SCREEN_X,
+    menu_background = stage.Grid(image_bank_background, constants.SCREEN_X,
                             constants.SCREEN_Y)
 
-    # list to store the generated plants
-    plants = []
+    sprites = []
+    chicken = stage.Sprite(image_bank_background, 1, 50, 55)
+    sprites.insert(0, chicken)
 
-    # procedurally generates the grass at the bottom of the screen
-    for grass_number in range(0, 10):
-        a_single_grass = stage.Sprite(image_bank_2, 5, constants.GRASS_POINT
-                                      + increaser, 128 - 16)
-        plants.append(a_single_grass)
-        increaser += 16
+    eggs = []
+    egg = stage.Sprite(image_bank_background, 3, 75, 55)
+    eggs.insert(0, egg)
+
 
     # create a stage for the background to show up on
     #  and set the frame rate to 60fps
     game = stage.Stage(ugame.display, constants.FPS)
     # set the layers of all sprites, items show up in order
-    game.layers = text + plants + [background]
+    game.layers = sprites + eggs + text + [menu_background]
     # render the background and initial lcation of sprite list
     # most likely you will only render the background once per scene
     game.render_block()
@@ -56,7 +88,7 @@ def menu_scene():
 
         # A button to fire
         if keys & ugame.K_START != 0:
-            game_scene
+            game_scene()
 
         # update game logic
         # redraw Sprites
@@ -64,7 +96,44 @@ def menu_scene():
 
 def  game_scene():
     # this function is the main game game scene
-    
+
+    # score
+    score = 0
+    egg_count = 0
+    bomb_count = 0
+
+    score_text = stage.Text(width=29, height=12)
+    score_text.clear()
+    score_text.cursor(0, 0)
+    score_text.move(1, 1)
+    score_text.text("Score: {0}".format(score))
+
+    def show_egg(): 
+        # this function take an alien from off screen and moves it on screen
+        for egg_number in range(len(eggs)):
+            if eggs[egg_number].x < 0:
+                eggs[egg_number].move(
+                    random.randint(
+                        0 + constants.SPRITE_SIZE,
+                        constants.SCREEN_X - constants.SPRITE_SIZE,
+                    ),
+                    constants.OFF_TOP_SCREEN,
+                )
+                break
+
+    def show_bomb(): 
+        # this function take an alien from off screen and moves it on screen
+        for bomb_number in range(len(bombs)):
+            if bombs[bomb_number].x < 0:
+                bombs[bomb_number].move(
+                    random.randint(
+                        0 + constants.SPRITE_SIZE,
+                        constants.SCREEN_X - constants.SPRITE_SIZE,
+                    ),
+                    constants.OFF_TOP_SCREEN,
+                )
+                break
+
     #image banks for CircuitPython
     image_bank_background = stage.Bank.from_bmp16("egg_collector_image_bank_test.bmp")
     image_bank_sprites = stage.Bank.from_bmp16("egg_collector_image_bank_test.bmp")  
@@ -76,14 +145,47 @@ def  game_scene():
     select_button = constants.button_state["button_up"]
 
     # get sound ready
-    pew_sound = open("bloop.wav", "rb")
+    bloop_sound = open("bloop.wav", "rb")
+    boom_sound = open("boom.wav", "rb")
     sound = ugame.audio
     sound.stop()
     sound.mute(False)
 
+    eggs = []
+    for egg_number in range(constants.TOTAL_NUMBER_OF_EGGS):
+        a_single_egg = stage.Sprite(
+            image_bank_sprites,
+            3,
+            constants.OFF_SCREEN_X,
+            constants.OFF_SCREEN_Y,
+        )
+        eggs.append(a_single_egg)
+    # place 1 alien on the screen
+    show_egg()
+
+    bombs = []
+    for bomb_number in range(constants.TOTAL_NUMBER_OF_BOMBS):
+        a_single_bomb = stage.Sprite(
+            image_bank_sprites,
+            4,
+            constants.OFF_SCREEN_X,
+            constants.OFF_SCREEN_Y,
+        )
+        bombs.append(a_single_bomb)
+    # place 1 alien on the screen
+    show_bomb()
+
     # set the background to image 0 in the image bank
     #  and the size (10x8 tiles of size 16x16)
     background = stage.Grid(image_bank_background, 10, 8)
+
+    increaser = 0
+    plants = []
+    for grass_number in range(0, 10):
+        a_single_grass = stage.Sprite(image_bank_background, 5, constants.GRASS_POINT
+                                      + increaser, 128 - 16)
+        plants.append(a_single_grass)
+        increaser += 16
 
     # add sprite
     chicken = stage.Sprite(
@@ -102,7 +204,7 @@ def  game_scene():
     game = stage.Stage(ugame.display, 60)
 
     # set the layers of all sprites, items show up in order
-    game.layers = [egg] + [chicken] + [background]
+    game.layers = [score_text] + bombs + eggs + [chicken] + plants + [background]
 
     # render all sprites
     # most likely you will only render the background once per game scene
@@ -136,10 +238,92 @@ def  game_scene():
         if keys & ugame.K_DOWN:
             pass
 
-        # update game logic
+# each frame move the eggs down, that are on the screen
+        for egg_number in range(len(eggs)):
+            if eggs[egg_number].x > 0:
+                eggs[egg_number].move(
+                    eggs[egg_number].x,
+                    eggs[egg_number].y + constants.EGG_SPEED,
+                )
+                if eggs[egg_number].y > constants.SCREEN_Y:
+                    eggs[egg_number].move(
+                        constants.OFF_SCREEN_X,
+                        constants.OFF_SCREEN_Y,
+                    )
+                    show_egg()
+
+# each frame move the bombs down, that are on the screen
+        for bomb_number in range(len(bombs)):
+            if bombs[bomb_number].x > 0:
+                bombs[bomb_number].move(
+                    bombs[bomb_number].x,
+                    bombs[bomb_number].y + constants.EGG_SPEED,
+                )
+                if bombs[bomb_number].y > constants.SCREEN_Y:
+                    bombs[bomb_number].move(
+                        constants.OFF_SCREEN_X,
+                        constants.OFF_SCREEN_Y,
+                    )
+                    show_bomb()
+
+        # each frame check if any eggs are touching the chicken
+        for egg_number in range(len(eggs)):
+            if eggs[egg_number].x > 0:
+                if stage.collide(
+                    eggs[egg_number].x + 1,
+                    eggs[egg_number].y,
+                    eggs[egg_number].x + 15,
+                    eggs[egg_number].y + 15,
+                    chicken.x,
+                    chicken.y,
+                    chicken.x + 15,
+                    chicken.y + 15,
+                ):
+                    eggs[egg_number].move(
+                    constants.OFF_SCREEN_X,
+                    constants.OFF_SCREEN_Y,
+                    )
+                    sound.stop()
+                    sound.play(bloop_sound)
+                    show_egg()
+                    show_egg()
+                    egg_count = egg_count + 1
+                    score += 1
+                    score_text.clear()
+                    score_text.cursor(0, 0)
+                    score_text.move(1, 1)
+                    score_text.text("Score: {0}".format(score))
+
+        # each frame check if any bombs are touching the chicken
+        for bomb_number in range(len(bombs)):
+            if bombs[bomb_number].x > 0:
+                if stage.collide(
+                    bombs[bomb_number].x + 1,
+                    bombs[bomb_number].y,
+                    bombs[bomb_number].x + 15,
+                    bombs[bomb_number].y + 15,
+                    chicken.x,
+                    chicken.y,
+                    chicken.x + 15,
+                    chicken.y + 15,
+                ):
+                    bombs[bomb_number].move(
+                    constants.OFF_SCREEN_X,
+                    constants.OFF_SCREEN_Y,
+                    )
+                    sound.stop()
+                    sound.play(boom_sound)
+                    show_bomb()
+                    show_bomb()
+                    bomb_count = bomb_count + 1
+                    score -= 1
+                    score_text.clear()
+                    score_text.cursor(0, 0)
+                    score_text.move(1, 1)
+                    score_text.text("Score: {0}".format(score))
 
         # redraw Sprite
-        game.render_sprites([egg] + [chicken])
+        game.render_sprites(bombs + eggs + [chicken])
         game.tick()  # wait until refresh rate finishes
 
 
